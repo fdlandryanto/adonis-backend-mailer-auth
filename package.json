@@ -52,6 +52,7 @@
     "typescript": "~5.8.3"
   },
   "dependencies": {
+    "@adonisjs/ally": "^5.1.1",
     "@adonisjs/auth": "^9.4.2",
     "@adonisjs/core": "^6.19.0",
     "@adonisjs/cors": "^2.2.1",
