@@ -25,6 +25,9 @@ router.post('/contact', [ContactSubmissionsController, 'store'])
 // Admin route to view contact submissions (protected)
 router.get('/admin/contact-submissions', [ContactSubmissionsController, 'index']).middleware([middleware.cookie_to_bearer(), middleware.auth()])
 
+router.get('/auth/google/redirect', [UsersController, 'redirectToGoogle'])
+router.get('/auth/google/callback', [UsersController, 'handleGoogleCallback'])
+
 router.get('/me', [UsersController, 'me']).middleware([middleware.cookie_to_bearer(), middleware.auth()])
 
 router.post('/auth/register', [UsersController, 'register'])

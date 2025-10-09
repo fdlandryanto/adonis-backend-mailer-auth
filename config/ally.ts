@@ -5,7 +5,8 @@ const allyConfig = defineConfig({
   google: services.google({
     clientId: env.get('GOOGLE_CLIENT_ID'),
     clientSecret: env.get('GOOGLE_CLIENT_SECRET'),
-    callbackUrl: '',
+    callbackUrl: env.get('GOOGLE_CALLBACK_URL'),
+    scopes: ['profile', 'email']
   }),
 })
 

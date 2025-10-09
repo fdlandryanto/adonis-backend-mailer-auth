@@ -370,4 +370,46 @@ export default class UsersController {
         }
     }
 
+    public async redirectToGoogle({ ally }: HttpContext) {
+        return ally.use('google').redirect()
+    }
+
+    public async handleGoogleCallback({ ally, response }: HttpContext) {
+        const google = ally.use('google')
+
+        if (google.stateMisMatch()) {
+            return response.badRequest({ message: 'Request expired. Please try again.' })
+        }
+        if ( google.hasError()) {
+            return response.badRequest({ message: google.getError() || 'An error occurred.' })
+        }
+
+        const googleUser = await google.user()
+
+        const user = await User.firstOrCreate(
+            {
+                provider: 'google',
+                provider_id: googleUser.id
+            },
+            {
+                email: googleUser.email!,
+                name: googleUser.name,
+                provider: 'google',
+                provider_id: googleUser.id,
+                is_verified: true
+            }
+        )
+
+        const token = await User.accessTokens.create(user)
+        const tokenValue = token.value!.release()
+
+        response.cookie('token', tokenValue, {
+            httpOnly: true,
+            sameSite: 'lax',
+            secure: env.get('NODE_ENV') === 'production',
+            maxAge: 60 * 60 * 24 * 7
+        })
+
+        return response.redirect(`${FRONTEND_URL}/auth/callback?token=${tokenValue}`)
+    }
 }
