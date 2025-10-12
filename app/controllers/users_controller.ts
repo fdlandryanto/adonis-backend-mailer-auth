@@ -7,6 +7,8 @@ import limiter from '@adonisjs/limiter/services/main'
 import crypto from 'node:crypto'
 import env from '#start/env'
 import { timingSafeEqual } from 'node:crypto'
+import hash from '@adonisjs/core/services/hash'
+import vine from '@vinejs/vine'
 
 function generateOtp(): string {
     return crypto.randomInt(100000, 1000000).toString()
@@ -414,5 +416,66 @@ export default class UsersController {
         })
 
         return response.redirect(`${FRONTEND_URL}/auth/callback?token=${tokenValue}`)
+    }
+
+    public async updatePassword({ auth, request, response }: HttpContext) {
+        const user = await auth.use('api').authenticate()
+
+        if (!user.password) {
+            return response.badRequest({
+                status: false,
+                message: `This account is registered with a social provider and does not have a password. Please create a password first`
+            })
+        }
+
+        const passwordSchema = vine.object({
+            old_password: vine.string().trim(),
+            new_password: vine.string().trim().minLength(6).notSameAs('old_password')
+        })
+
+        const passwordValidator = vine.compile(passwordSchema)
+        const { old_password, new_password } = await request.validateUsing(passwordValidator)
+
+        const isOldPasswordValid = await hash.verify(user.password, old_password)
+        if (!isOldPasswordValid) {
+            return response.badRequest({
+                status: false,
+                message: 'Invalid old password'
+            })
+        }
+
+        user.password = new_password
+        await user.save()
+
+        return response.ok({
+            status: true,
+            message: 'Password updated successfully'
+        })
+    }
+
+    public async createPassword({ auth, request, response }: HttpContext) {
+        const user = await auth.use('api').authenticate()
+
+        if (user.password) {
+            return response.badRequest({
+                status: false,
+                message: 'This account already has a password set'
+            })
+        }
+
+        const passwordSchema = vine.object({
+            new_password: vine.string().trim().minLength(6)
+        })
+
+        const passwordValidator = vine.compile(passwordSchema)
+        const { new_password } = await request.validateUsing(passwordValidator)
+
+        user.password = new_password
+        await user.save()
+
+        return response.ok({
+            status: true,
+            message: 'Password created successfully'
+        })
     }
 }
