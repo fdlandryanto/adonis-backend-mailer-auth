@@ -63,11 +63,7 @@ export default class UsersController {
         const verificationLink = `${FRONTEND_URL}/verify/${otp}`
 
         try {
-            await this.mailerService.sendEmail(
-                email,
-                'Verify Your Account',
-                `Your OTP code is: ${otp}\n\nYou can also verify using this link:\n${verificationLink}`
-            )
+            await this.mailerService.sendOtpEmail(email, { otp, verificationLink })
 
             const userCreation = await User.create({
                 name,
@@ -239,11 +235,7 @@ export default class UsersController {
 
         const verificationLink = `${FRONTEND_URL}/verify/${otp}`
 
-        await this.mailerService.sendEmail(
-            user.email,
-            'Your new OTP code',
-            `Your new OTP code is: ${otp}\n\nYou can also verify using this link:\n${verificationLink}`
-        )
+        await this.mailerService.sendOtpEmail(user.email, { otp, verificationLink })
 
         await otpLimiter.increment(limiterKey)
 
