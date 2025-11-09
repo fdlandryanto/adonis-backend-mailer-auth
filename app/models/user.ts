@@ -4,6 +4,7 @@ import { compose } from '@adonisjs/core/helpers'
 import { BaseModel, column } from '@adonisjs/lucid/orm'
 import { withAuthFinder } from '@adonisjs/auth/mixins/lucid'
 import { DbAccessTokensProvider } from '@adonisjs/auth/access_tokens'
+import { InterestKey } from '../constants/interests.js'
 
 const AuthFinder = withAuthFinder(() => hash.use('scrypt'), {
   uids: ['email'],
@@ -46,6 +47,44 @@ export default class User extends compose(BaseModel, AuthFinder) {
 
   @column()
   declare provider_id: string | null
+
+  @column({
+    prepare: (value: InterestKey[]) => {
+      return JSON.stringify(value || [])
+    },
+
+    consume: (value: any) => {
+      if (!value) {
+        return []
+      }
+
+      if (Array.isArray(value)) {
+        return value
+      }
+
+      if (typeof value === 'string') {
+        if (value.trim() === '') {
+          return []
+        }
+
+        try {
+          return JSON.parse(value)
+        } catch (error) {
+          console.error(
+            'Failed to parse areas_of_interest string from DB:',
+            error,
+            'Value was:',
+            JSON.stringify(value)
+          )
+          return []
+        }
+      }
+
+      console.warn('Unexpected data type for areas_of_interest:', value)
+      return []
+    },
+  })
+  declare areasOfInterest: InterestKey[]
 
   @column({ serializeAs: null })
   declare password: string | null

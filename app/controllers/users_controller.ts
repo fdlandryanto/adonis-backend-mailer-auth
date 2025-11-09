@@ -8,10 +8,11 @@ import crypto from 'node:crypto'
 import env from '#start/env'
 import { timingSafeEqual } from 'node:crypto'
 import hash from '@adonisjs/core/services/hash'
-import vine from '@vinejs/vine'
+import vine, {errors as vineErrors } from '@vinejs/vine'
 import AvatarService from '#services/avatar_service'
 import app from '@adonisjs/core/services/app'
 import fs from 'fs'
+import { InterestKeys } from '../constants/interests.js'
 
 function generateOtp(): string {
     return crypto.randomInt(100000, 1000000).toString()
@@ -307,63 +308,61 @@ export default class UsersController {
     public async updateProfile({ auth, request, response }: HttpContext) {
         try {
             const user = auth.user!
-            const { phoneNumber, name } = request.only(['phoneNumber', 'name'])
 
-            // Validate that at least one field is provided
-            if (!phoneNumber && !name) {
-                return response.status(400).json({
-                    success: false,
-                    error: 'At least one field (phoneNumber or name) is required.'
-                })
+            const profileSchema = vine.object({
+                name: vine.string().trim().minLength(2).optional(),
+                phone_number: vine.string().trim().mobile().optional(),
+                areasOfInterest: vine.array(vine.enum([...InterestKeys])).optional()
+            })
+
+            const validator = vine.compile(profileSchema)
+            const payload = await request.validateUsing(validator)
+
+            const hasName = payload.name && payload.name.trim() !== ''
+            const hasPhone = payload.phone_number && payload.phone_number.trim() !== ''
+            const hasInterests =
+            payload.areasOfInterest && payload.areasOfInterest.length > 0
+
+            if (!hasName && !hasPhone && !hasInterests) {
+                throw new vineErrors.E_VALIDATION_ERROR([
+                    {
+                    field: 'root',
+                    message:
+                        'At least one field (name, phone_number, or areasOfInterest) is required.',
+                    rule: 'atLeastOneOf',
+                    },
+                ])
             }
 
-            // Prepare update data
-            const updateData: Partial<{
-                phone_number: string | null
-                name: string
-            }> = {}
-
-            if (phoneNumber !== undefined) {
-                // Validate phone number format (basic validation)
-                if (phoneNumber && !/^\+?[\d\s\-\(\)]{10,}$/.test(phoneNumber.replace(/\s/g, ''))) {
-                    return response.status(400).json({
-                        success: false,
-                        error: 'Invalid phone number format.'
-                    })
-                }
-                updateData.phone_number = phoneNumber || null
-            }
-
-            if (name !== undefined) {
-                if (name && name.trim().length < 2) {
-                    return response.status(400).json({
-                        success: false,
-                        error: 'Name must be at least 2 characters long.'
-                    })
-                }
-                updateData.name = name.trim()
-            }
-
-            // Update user
-            await user.merge(updateData).save()
+            await user.merge(payload).save()
 
             return response.json({
                 success: true,
                 message: 'Profile updated successfully',
-                data: {
-                    id: user.id,
-                    name: user.name,
-                    email: user.email,
-                    phone_number: user.phone_number,
-                    is_verified: user.is_verified
-                }
+                data: user.serialize({
+                    fields: [
+                    'id',
+                    'name',
+                    'email',
+                    'phone_number',
+                    'is_verified',
+                    'areasOfInterest',
+                    'avatar',
+                    ],
+                }),
             })
-
         } catch (error) {
+            if (error instanceof vineErrors.E_VALIDATION_ERROR) {
+                return response.status(400).json({
+                    success: false,
+                    errors: error.messages,
+                })
+            }
+
             console.error('Error updating profile:', error)
             return response.status(500).json({
                 success: false,
-                error: 'Failed to update profile.'
+                error: 'Failed to update profile.',
             })
         }
     }
