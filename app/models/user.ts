@@ -86,6 +86,12 @@ export default class User extends compose(BaseModel, AuthFinder) {
   })
   declare areasOfInterest: InterestKey[]
 
+  @column({ columnName: 'country_region' })
+  declare countryRegion: string | null
+
+  @column({ columnName: 'detail_address' })
+  declare detailAddress: string | null
+
   @column({ serializeAs: null })
   declare password: string | null
 

@@ -305,14 +305,16 @@ export default class UsersController {
         }
     }
 
-    public async updateProfile({ auth, request, response }: HttpContext) {
+public async updateProfile({ auth, request, response }: HttpContext) {
         try {
             const user = auth.user!
 
             const profileSchema = vine.object({
                 name: vine.string().trim().minLength(2).optional(),
                 phone_number: vine.string().trim().mobile().optional(),
-                areasOfInterest: vine.array(vine.enum([...InterestKeys])).optional()
+                areasOfInterest: vine.array(vine.enum([...InterestKeys])).optional(),
+                country_region: vine.string().trim().minLength(2).optional(),
+                detail_address: vine.string().trim().minLength(5).optional()
             })
 
             const validator = vine.compile(profileSchema)
@@ -322,13 +324,14 @@ export default class UsersController {
             const hasPhone = payload.phone_number && payload.phone_number.trim() !== ''
             const hasInterests =
             payload.areasOfInterest && payload.areasOfInterest.length > 0
+            const hasCountry = payload.country_region && payload.country_region.trim() !== ''
+            const hasAddress = payload.detail_address && payload.detail_address.trim() !== ''
 
-            if (!hasName && !hasPhone && !hasInterests) {
+            if (!hasName && !hasPhone && !hasInterests && !hasCountry && !hasAddress) {
                 throw new vineErrors.E_VALIDATION_ERROR([
                     {
                     field: 'root',
-                    message:
-                        'At least one field (name, phone_number, or areasOfInterest) is required.',
+                    message: 'At least one field is required.',
                     rule: 'atLeastOneOf',
                     },
                 ])
@@ -348,6 +351,8 @@ export default class UsersController {
                     'is_verified',
                     'areasOfInterest',
                     'avatar',
+                    'countryRegion',
+                    'detailAddress'
                     ],
                 }),
             })
