@@ -43,7 +43,10 @@ export default class UsersController {
                 phone_number: user.phone_number,
                 is_verified: user.is_verified,
                 role: user.role,
-                avatar: user.avatar
+                avatar: user.avatar,
+                areasOfInterest: user.areasOfInterest,
+                countryRegion: user.countryRegion,
+                detailAddress: user.detailAddress
             })
         } catch (err) {
             console.error('Error in me endpoint:', err)
