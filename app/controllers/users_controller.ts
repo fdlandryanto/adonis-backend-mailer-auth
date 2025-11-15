@@ -13,6 +13,7 @@ import AvatarService from '#services/avatar_service'
 import app from '@adonisjs/core/services/app'
 import fs from 'fs'
 import { InterestKeys } from '../constants/interests.js'
+import { LandUseKeys } from '../constants/land_use.js'
 
 function generateOtp(): string {
     return crypto.randomInt(100000, 1000000).toString()
@@ -308,7 +309,7 @@ export default class UsersController {
         }
     }
 
-public async updateProfile({ auth, request, response }: HttpContext) {
+    public async updateProfile({ auth, request, response }: HttpContext) {
         try {
             const user = auth.user!
 
@@ -371,6 +372,53 @@ public async updateProfile({ auth, request, response }: HttpContext) {
             return response.status(500).json({
                 success: false,
                 error: 'Failed to update profile.',
+            })
+        }
+    }
+
+    public async updateLandProfile({ auth, request, response }: HttpContext) {
+        const user = auth.user!
+
+        const landSchema = vine.object({
+            isHeirProperty: vine.boolean(),
+            countyLocation: vine.string().trim().minLength(2).optional(),
+            approximateAcreage: vine.number().positive().optional(),
+            landUse: vine
+                .array(vine.enum([...LandUseKeys]))
+                .optional()
+        })
+
+        try {
+            const validator = vine.compile(landSchema)
+            const payload = await request.validateUsing(validator)
+
+            const land = await user.related('land').updateOrCreate(
+                {},
+                {
+                    isHeirProperty: payload.isHeirProperty,
+                    countyLocation: payload.countyLocation,
+                    approximateAcreage: payload.approximateAcreage,
+                    landUse: payload.landUse || [],
+                }
+            )
+
+            return response.status(200).json({
+                success: true,
+                message: 'Land profile saved successfully.',
+                data: land,
+            })
+
+        } catch (error) {
+            if (error instanceof vineErrors.E_VALIDATION_ERROR) {
+                return response.status(400).json({
+                    success: false,
+                    errors: error.messages,
+                })
+            }
+            console.error('Error saving land profile:', error)
+            return response.status(500).json({
+                success: false,
+                error: 'Failed to save land profile.',
             })
         }
     }
