@@ -37,9 +37,28 @@ const FRONTEND_URL = env.get("NODE_ENV") === "production" ? env.get("PRODUCTION_
 export default class UsersController {
     constructor(protected mailerService: MailerService) { }
 
-    public async me({ auth, response }: HttpContext) {
+    public async me({ auth, response, request }: HttpContext) {
         try {
+            console.log('🔍 [BACKEND] /me called')
+            console.log('🔍 [BACKEND] Authorization header:', request.header('authorization'))
+            console.log('🔍 [BACKEND] Cookie header:', request.header('cookie'))
+            
+            // Extract and log the token
+            const authHeader = request.header('authorization')
+            const token = authHeader?.replace('Bearer ', '').trim()
+            console.log('🔍 [BACKEND] Extracted token:', token?.substring(0, 20) + '...')
+            
+            // Check database connection
+            try {
+                await User.query().limit(1)
+                console.log('✅ [BACKEND] Database connected, users table accessible')
+            } catch (dbErr) {
+                console.error('❌ [BACKEND] Database error:', dbErr)
+            }
+
+            console.log('🔍 [BACKEND] Attempting to authenticate...')
             const user = await auth.use('api').authenticate()
+            console.log('✅ [BACKEND] User authenticated successfully:', { id: user.id, email: user.email })
             await user.load('land')
             return response.ok({
                 id: user.id,
@@ -58,7 +77,8 @@ export default class UsersController {
                 subscribesToNewsletter: user.subscribesToNewsletter,
                 membershipPackage: user.membershipPackage,
 
-                land: user.land
+                land: user.land || null
+
             })
         } catch (err) {
             console.error('Error in me endpoint:', err)
@@ -125,9 +145,27 @@ export default class UsersController {
         }
 
         try {
+            console.log('🔐 [LOGIN] Attempting login for:', email)
             const user = await User.verifyCredentials(email, password)
+            console.log('✅ [LOGIN] Credentials verified for user:', user.id)
+            
             const token = await User.accessTokens.create(user)
+            console.log('🎫 [LOGIN] Token created:', { 
+                tokenId: token.identifier,
+                userId: user.id,
+                expiresAt: token.expiresAt
+            })
+            
             const tokenValue = token.value!.release()
+            console.log('🎫 [LOGIN] Token value (first 20 chars):', tokenValue.substring(0, 20) + '...')
+            
+            // Verify token was saved by trying to find it
+            try {
+                const savedToken = await User.accessTokens.find(user, token.identifier)
+                console.log('✅ [LOGIN] Token verified in database:', savedToken ? 'FOUND' : 'NOT FOUND')
+            } catch (verifyErr) {
+                console.error('❌ [LOGIN] Error verifying saved token:', verifyErr)
+            }
 
             response.cookie('token', tokenValue, {
                 httpOnly: true,
@@ -146,6 +184,7 @@ export default class UsersController {
                 },
             })
         } catch (error) {
+            console.error('❌ [LOGIN] Login failed:', error)
             return response.badRequest({ success: false, message: 'Invalid email or password' })
         }
     }
