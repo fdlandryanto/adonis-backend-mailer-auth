@@ -11,6 +11,7 @@ import router from '@adonisjs/core/services/router'
 import MailersController from '#controllers/mailers_controller'
 import UsersController from '#controllers/users_controller'
 import ContactSubmissionsController from '#controllers/contact_submissions_controller'
+import AdminController from '#controllers/admin_controller'
 import { middleware } from './kernel.js'
 
 router.get('/', async () => {
@@ -39,4 +40,6 @@ router.group(() => {
     router.post('/profile/land', [UsersController, 'updateLandProfile'])
 
     router.get('/admin/contact-submissions', [ContactSubmissionsController, 'index'])
+
+    router.get('/admin/dashboard', [AdminController, 'dashboard']).middleware(middleware.adminAuth)
   }).middleware([middleware.cookie_to_bearer(), middleware.auth()])
