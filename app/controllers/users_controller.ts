@@ -365,7 +365,7 @@ export default class UsersController {
 
             const profileSchema = vine.object({
                 name: vine.string().trim().minLength(2).optional(),
-                phone_number: vine.string().trim().mobile().optional(),
+                phone_number: vine.string().trim().regex(/^\+?[1-9]\d{1,14}$/).optional(),
                 areasOfInterest: vine.array(vine.enum([...InterestKeys])).optional(),
                 country_region: vine.string().trim().minLength(2).optional(),
                 detail_address: vine.string().trim().minLength(5).optional(),
