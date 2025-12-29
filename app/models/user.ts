@@ -1,12 +1,13 @@
 import { DateTime } from 'luxon'
 import hash from '@adonisjs/core/services/hash'
 import { compose } from '@adonisjs/core/helpers'
-import { BaseModel, column, hasOne } from '@adonisjs/lucid/orm'
+import { BaseModel, column, hasOne, hasMany } from '@adonisjs/lucid/orm'
 import { withAuthFinder } from '@adonisjs/auth/mixins/lucid'
 import { DbAccessTokensProvider } from '@adonisjs/auth/access_tokens'
 import { InterestKey } from '../constants/interests.js'
 import Land from '#models/land'
-import type { HasOne } from '@adonisjs/lucid/types/relations'
+import Order from '#models/order'
+import type { HasOne, HasMany } from '@adonisjs/lucid/types/relations'
 import { ResourceKey } from '../constants/resource_keys.js'
 import { ContactMethod } from '../constants/contact_method.js'
 import { MembershipPackage } from '../constants/membership_packages.js'
@@ -134,6 +135,9 @@ export default class User extends compose(BaseModel, AuthFinder) {
 
   @hasOne(() => Land)
   declare land: HasOne<typeof Land>
+
+  @hasMany(() => Order)
+  declare orders: HasMany<typeof Order>
 
   static accessTokens = DbAccessTokensProvider.forModel(User, {
     expiresIn: '30 days'

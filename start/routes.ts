@@ -46,6 +46,8 @@ router.group(() => {
     router.post('/profile/avatar/url', [UsersController, 'updateAvatarUrl'])
     router.post('/profile/land', [UsersController, 'updateLandProfile'])
 
+    router.get('/user/event-registrations', [UsersController, 'eventRegistrations'])
+
     router.get('/plans/current', [LandStewardshipPlansController, 'show'])
     router.post('/plans/step1', [LandStewardshipPlansController, 'step1'])
     router.post('/plans/step2', [LandStewardshipPlansController, 'step2'])

@@ -663,4 +663,76 @@ export default class UsersController {
             avatar_url: user.avatar,
         })
     }
+
+    public async eventRegistrations({ auth, response }: HttpContext) {
+        try {
+            console.log('🔍 [EVENT_REGISTRATIONS] Starting endpoint')
+            
+            const user = auth.user
+            console.log('🔍 [EVENT_REGISTRATIONS] User authenticated:', { id: user?.id, email: user?.email })
+            
+            if (!user) {
+                console.error('❌ [EVENT_REGISTRATIONS] No authenticated user found')
+                return response.unauthorized({ 
+                    success: false, 
+                    message: 'Unauthorized - no user found' 
+                })
+            }
+
+            console.log('🔍 [EVENT_REGISTRATIONS] Fetching orders for user:', user.id)
+            
+            // Get all orders for this user that have event data (don't use .select() to preserve DateTime objects)
+            const orders = await user.related('orders')
+                .query()
+                .whereNotNull('eventId')
+                .orderBy('createdAt', 'desc')
+
+            console.log('🔍 [EVENT_REGISTRATIONS] Found', orders.length, 'event orders')
+
+            // Transform the data to match the expected response format
+            const eventRegistrations = orders.map((order) => {
+                // Extract slug from eventId (assuming format like "event-1")
+                const eventSlug = order.eventId?.toLowerCase().replace(/\s+/g, '-') || ''
+
+                // Safely handle eventDate - could be DateTime, Date, or string
+                let eventDateISO = ''
+                if (order.eventDate) {
+                    if (typeof order.eventDate.toISO === 'function') {
+                        eventDateISO = order.eventDate.toISO()
+                    } else if (order.eventDate instanceof Date) {
+                        eventDateISO = order.eventDate.toISOString()
+                    } else if (typeof order.eventDate === 'string') {
+                        eventDateISO = order.eventDate
+                    }
+                }
+
+                return {
+                    id: order.id,
+                    eventId: order.eventId,
+                    eventTitle: order.eventTitle || '',
+                    eventDate: eventDateISO,
+                    eventVenue: order.eventVenue || '',
+                    eventSlug: eventSlug,
+                    price: order.totalPrice,
+                    status: order.status || 'pending',
+                    registeredAt: order.createdAt.toISO(),
+                    transactionId: order.stripePaymentIntentId || ''
+                }
+            })
+
+            console.log('✅ [EVENT_REGISTRATIONS] Returning', eventRegistrations.length, 'registrations')
+            
+            return response.ok({
+                success: true,
+                data: eventRegistrations
+            })
+        } catch (error) {
+            console.error('❌ [EVENT_REGISTRATIONS] Error fetching event registrations:', error instanceof Error ? error.message : error)
+            console.error('❌ [EVENT_REGISTRATIONS] Full error:', error)
+            return response.internalServerError({
+                success: false,
+                message: 'Failed to fetch event registrations'
+            })
+        }
+    }
 }
