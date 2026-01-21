@@ -59,17 +59,11 @@ export default class LandStewardshipPlansController {
                     userId: user.id,
                     status: 'draft',
                     currentStep: 1,
-                    ...payload
-                })
-
-                plan.merge({
                     fullName: payload.full_name,
                     phoneNumber: payload.phone_number,
                     email: payload.email,
                     isReturningSteward: payload.is_returning_steward
                 })
-                await plan.save()
-
             } else {
                 plan = await LandStewardshipPlan.updateOrCreate(
                     { userId: user.id, status: 'draft' },
@@ -158,6 +152,8 @@ export default class LandStewardshipPlansController {
             gps_pin_link: vine.string().optional(),
         })
         const payload = await request.validateUsing(vine.compile(textSchema))
+        const photosPath = app.makePath('uploads/plans/photos')
+        const mapsPath = app.makePath('uploads/plans/maps')
 
         const photos = request.files('uploaded_photos', {
             size: '10mb',
@@ -168,7 +164,7 @@ export default class LandStewardshipPlansController {
         for (const photo of photos) {
             if (photo.isValid) {
                 const fileName = `${cuid()}.${photo.extname}`
-                await photo.move(app.makePath('uploads/plans/photos'), { name: fileName })
+                await photo.move(photosPath, { name: fileName })
                 photoPaths.push(fileName)
             }
         }
@@ -180,7 +176,7 @@ export default class LandStewardshipPlansController {
         let mapPath = plan.mapScreenshotPath
         if (mapScreenshot && mapScreenshot.isValid) {
             const fileName = `${cuid()}_map.${mapScreenshot.extname}`
-            await mapScreenshot.move(app.makePath('uploads/plans/maps'), { name: fileName })
+            await mapScreenshot.move(mapsPath, { name: fileName })
             mapPath = fileName
         }
 
